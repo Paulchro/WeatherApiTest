@@ -60,7 +60,7 @@ namespace WeatherApiTest
         public string latt_long { get; set; }
         public string timezone { get; set; }
     }
-    public class Root2
+    public class WeatherDirect
     {
         public long id { get; set; }
         public string weather_state_name { get; set; }
@@ -84,71 +84,75 @@ namespace WeatherApiTest
         {
             Console.WriteLine("Welcome to my weather application, type a city");
             Console.WriteLine("\nA list with matching cities and their codes will appear,\nselect a code to get the weather for the next 5 days.\n");
-            List<int> citycodes = FindCode();
-            Console.WriteLine($"If you want to get 5 days weather forecast press -1- or\nif you want to get weather for a specific day (2013 - " + DateTime.Now.ToString("dd/MM/yyyy") +" +5-10 days " + ") press -2-");
-            WeatherChoose(citycodes);
+            Dictionary<int, string> citycodes = FindCode();
+            int valid =  ValidCode(citycodes);
+            Console.WriteLine($"If you want to get 5 days weather forecast press -1- or\nif you want to get weather for a specific day (2013 - " 
+                + DateTime.Now.ToString("dd/MM/yyyy") +" +5-10 days " + ") press -2-");
+            WeatherChoose(citycodes, valid);
 
         }
 
-        private static void WeatherChoose(List<int> citycodes)
+        private static void WeatherChoose(Dictionary<int, string> citycodes, int choosencity)
         {
             string forecastselect = Console.ReadLine();
             switch (forecastselect)
             {
                 case "2":
-                    GetWeatherSpec(citycodes);
+                    GetWeatherSpec(citycodes, choosencity);
                     break;
                 case "1":
-                    GetWeather(citycodes);
+                    GetWeather(citycodes, choosencity);
                     break;
                 default:
                     Console.WriteLine("Wrong answer, try again");
-                    WeatherChoose(citycodes);
+                    WeatherChoose(citycodes, choosencity);
                     break;
             }
         }
 
-        private static void GetWeather(List<int> citycodes)
+        private static void GetWeather(Dictionary<int, string> citycodes, int choosencity)
         {
             int d = 0;
-            var json = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{ValidCode(citycodes)}/");
+            var json = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{choosencity}/");
             var root = JsonConvert.DeserializeObject<Root>(json);
             Console.WriteLine("Weather on: " + root.title + " for the next 5 days");
             foreach (var item in root.consolidated_weather)
             {
-                Console.WriteLine(DateTime.Now.AddDays(d).ToString("dd/MM/yyyy") + " Max temp: " + String.Format("{0:0}", item.max_temp) + ". Min temp: " + String.Format("{0:0}", item.min_temp) + " Conditions: " + item.weather_state_name);
+                Console.WriteLine(DateTime.Now.AddDays(d).ToString("dd/MM/yyyy") + " Max temp: " + String.Format("{0:0}", item.max_temp) 
+                    + ". Min temp: " + String.Format("{0:0}", item.min_temp) + " Conditions: " + item.weather_state_name);
                 d++;
             }
         }
-        private static void GetWeatherSpec(List<int> citycodes)
+        private static void GetWeatherSpec(Dictionary<int, string> citycodes, int choosencity)
         {
-            int d = 0;
             Console.WriteLine("Choose a date (dd/MM/yyyy)");
             DateTime date;
 
             if (!DateTime.TryParseExact(Console.ReadLine(), "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
             {
                 Console.WriteLine("Wrong input, try again");
-                GetWeatherSpec(citycodes);
+                GetWeatherSpec(citycodes, choosencity);
             }
-            var json = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{ValidCode(citycodes)}/" + date.Year.ToString() + "/" + date.Month.ToString() + "/" + date.Day.ToString() + "/");
-            List<Root2> root = JsonConvert.DeserializeObject<List<Root2>>(json);
-            //Console.WriteLine("Weather on: " + root. + " for the next 5 days");
-            
-             Console.WriteLine(date.ToString("dd/MM/yyyy") + ": Max temp: " + String.Format("{0:0}", root[0].max_temp) + ". Min temp: " + String.Format("{0:0}", root[0].min_temp) + " Conditions: " + root[0].weather_state_name);
+            var json = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{choosencity}/" 
+                + date.Year.ToString() + "/" + date.Month.ToString() + "/" + date.Day.ToString() + "/");
+            List<WeatherDirect> root = JsonConvert.DeserializeObject<List<WeatherDirect>>(json);
+            Console.WriteLine("Weather on: " + citycodes.Values.ElementAt(0) + " for the given day");
+
+            Console.WriteLine(date.ToString("dd/MM/yyyy") + ": Max temp: " + String.Format("{0:0}", root[0].max_temp) 
+                + ". Min temp: " + String.Format("{0:0}", root[0].min_temp) + " Conditions: " + root[0].weather_state_name);
              
         }
 
-        private static List<int> FindCode()
+        private static Dictionary<int, string> FindCode()
         {
-            List<int> citycodes = new List<int>();
+            Dictionary<int, string> citycodes = new Dictionary<int, string>();
             int i = 1;
             string query = Console.ReadLine();
             var json = new WebClient().DownloadString("https://www.metaweather.com/api/location/search/?query=locationfinder".Replace("locationfinder", query));
             List<Root> root = JsonConvert.DeserializeObject<List<Root>>(json);
             if(root.Count == 1)
             {
-                citycodes.Add(root[0].woeid);
+                citycodes.Add(root[0].woeid, root[0].title);
                 Console.WriteLine("Found only 1 city: " + root[0].title +"\n");
             }
             else if (root.Count > 1)
@@ -156,7 +160,7 @@ namespace WeatherApiTest
                 Console.WriteLine("Retrieving cities...Wait until its done.");
                 foreach (var item in root)
                 {
-                    citycodes.Add(item.woeid);
+                    citycodes.Add(item.woeid, item.title);
                     if (root.Count > 1)
                     {
                         var json1 = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{item.woeid}/");
@@ -166,7 +170,7 @@ namespace WeatherApiTest
                     }
                 }
                 Console.WriteLine("\nDone!");
-                Console.WriteLine($"Found {citycodes.Count} matchings.");
+                Console.WriteLine($"Found {citycodes.Count} matchings.\n");
             }
             else
             {
@@ -177,7 +181,7 @@ namespace WeatherApiTest
             return citycodes;
         }
 
-        public static int ValidCode(List<int> list)
+        public static int ValidCode(Dictionary<int, string> list)
         {
             int selection;
             int mycode;
@@ -186,15 +190,15 @@ namespace WeatherApiTest
                 Console.Write("Choose a city\n");
                 while (!int.TryParse(Console.ReadLine(), out selection))
                     Console.Write("The value must be of integer type, try again: ");
-                bool isInList = list.IndexOf(list[selection - 1]) == -1;
+                bool isInList = list.Keys.ElementAt(selection - 1) == -1;
                 if (isInList)
                 {
                     Console.WriteLine("Theres no city with this code! Try again...");
                     ValidCode(list);
                 }
-                return list[selection - 1];
+                return list.Keys.ElementAt(selection - 1);
             }
-            return list[0]; 
+            return list.Keys.ElementAt(0); 
         }
     }
 }
