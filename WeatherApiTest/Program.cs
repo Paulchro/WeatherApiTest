@@ -82,12 +82,22 @@ namespace WeatherApiTest
     {
         static void Main(string[] args)
         {
+            Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine("Welcome to my weather application, type a city");
+            Console.ForegroundColor = ConsoleColor.Blue;
             Console.WriteLine("\nA list with matching cities and their codes will appear,\nselect a code to get the weather for the next 5 days.\n");
+            Console.ResetColor();
             Dictionary<int, string> citycodes = FindCode();
             int valid =  ValidCode(citycodes);
-            Console.WriteLine($"If you want to get 5 days weather forecast press -1- or\nif you want to get weather for a specific day (2013 - " 
-                + DateTime.Now.ToString("dd/MM/yyyy") +" +5-10 days " + ") press -2-");
+            Console.Write("If you want to get 5 days weather forecast press");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write(" 1 ");
+            Console.ResetColor();
+            Console.Write("or\nif you want to get weather for a specific day (2013 - "
+                + DateTime.Now.ToString("dd/MM/yyyy") + " +5-10 days " + ") press");
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.Write(" 2");Console.ResetColor();
+            Console.Write(".\n\n");
             WeatherChoose(citycodes, valid);
 
         }
@@ -104,7 +114,9 @@ namespace WeatherApiTest
                     GetWeather(citycodes, choosencity);
                     break;
                 default:
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Wrong answer, try again");
+                    Console.ResetColor();
                     WeatherChoose(citycodes, choosencity);
                     break;
             }
@@ -130,7 +142,9 @@ namespace WeatherApiTest
 
             if (!DateTime.TryParseExact(Console.ReadLine(), "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out date))
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Wrong input, try again");
+                Console.ResetColor();
                 GetWeatherSpec(citycodes, choosencity);
             }
             var json = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{choosencity}/" 
@@ -153,7 +167,9 @@ namespace WeatherApiTest
             if(root.Count == 1)
             {
                 citycodes.Add(root[0].woeid, root[0].title);
-                Console.WriteLine("Found only 1 city: " + root[0].title +"\n");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("\nFound only 1 city: " + root[0].title +"\n");
+                Console.ResetColor();
             }
             else if (root.Count > 1)
             {
@@ -169,12 +185,17 @@ namespace WeatherApiTest
                         i++;
                     }
                 }
+                Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("\nDone!");
+                Console.ForegroundColor = ConsoleColor.Blue;
                 Console.WriteLine($"Found {citycodes.Count} matchings.\n");
+                Console.ResetColor();
             }
             else
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Sorry, no city found with this name. Try again.");
+                Console.ResetColor();
                 FindCode();
             }
 
@@ -188,12 +209,18 @@ namespace WeatherApiTest
             if (list.Count > 1)
             {
                 Console.Write("Choose a city\n");
-                while (!int.TryParse(Console.ReadLine(), out selection))
-                    Console.Write("The value must be of integer type, try again: ");
+                while (!int.TryParse(Console.ReadLine(), out selection) || selection > list.Count)
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.Write("Wrong value, try again!\n(Choose from the list above)\n");
+                    Console.ResetColor();
+                }
                 bool isInList = list.Keys.ElementAt(selection - 1) == -1;
                 if (isInList)
                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Theres no city with this code! Try again...");
+                    Console.ResetColor();
                     ValidCode(list);
                 }
                 return list.Keys.ElementAt(selection - 1);
