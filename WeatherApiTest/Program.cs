@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -88,7 +89,11 @@ namespace WeatherApiTest
             Console.WriteLine("\nA list with matching cities and their codes will appear,\nselect a code to get the weather for the next 5 days.\n");
             Console.ResetColor();
             Dictionary<int, string> citycodes = FindCode();
-            int valid =  ValidCode(citycodes);
+            int valid = ValidCode(citycodes);
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"-Your choice: {citycodes[valid]}-");
+            Console.ResetColor();
+            Console.WriteLine();
             Console.Write("If you want to get 5 days weather forecast press");
             Console.ForegroundColor = ConsoleColor.Red;
             Console.Write(" 1 ");
@@ -96,7 +101,8 @@ namespace WeatherApiTest
             Console.Write("or\nif you want to get weather for a specific day (2013 - "
                 + DateTime.Now.ToString("dd/MM/yyyy") + " +5-10 days " + ") press");
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.Write(" 2");Console.ResetColor();
+            Console.Write(" 2"); 
+            Console.ResetColor();
             Console.Write(".\n\n");
             WeatherChoose(citycodes, valid);
 
@@ -159,53 +165,75 @@ namespace WeatherApiTest
 
         private static Dictionary<int, string> FindCode()
         {
+            
             Dictionary<int, string> citycodes = new Dictionary<int, string>();
             int i = 1;
-            string query = Console.ReadLine();
-            var json = new WebClient().DownloadString("https://www.metaweather.com/api/location/search/?query=locationfinder".Replace("locationfinder", query));
-            List<Root> root = JsonConvert.DeserializeObject<List<Root>>(json);
-            if(root.Count == 1)
-            {
-                citycodes.Add(root[0].woeid, root[0].title);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("\nFound only 1 city: " + root[0].title +"\n");
-                Console.ResetColor();
-            }
-            else if (root.Count > 1)
-            {
-                Console.WriteLine("Retrieving cities...Wait until its done.");
-                foreach (var item in root)
-                {
-                    citycodes.Add(item.woeid, item.title);
-                    if (root.Count > 1)
-                    {
-                        var json1 = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{item.woeid}/");
-                        var root1 = JsonConvert.DeserializeObject<Root>(json1);
-                        Console.WriteLine(i.ToString() + ": " + item.title + " " + root1.parent.title);
-                        i++;
-                    }
-                }
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("\nDone!");
-                Console.ForegroundColor = ConsoleColor.Blue;
-                Console.WriteLine($"Found {citycodes.Count} matchings.\n");
-                Console.ResetColor();
-            }
-            else
+            string json;
+            do
             {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Sorry, no city found with this name. Try again.");
+                Console.WriteLine("Please enter a valid location!");
                 Console.ResetColor();
-                FindCode();
-            }
+                string query = Console.ReadLine();
+                json = new WebClient().DownloadString("https://www.metaweather.com/api/location/search/?query=locationfinder".Replace("locationfinder", query));
+                //if (json == "[]")
+                //{
+                //    Console.ForegroundColor = ConsoleColor.Red;
+                //    Console.WriteLine("Sorry, no city found with this name. Try again.");
+                //    Console.ResetColor();
+                //    citycodes = null;
+                //}
+            } while (json == "[]");
+            List<Root> root = JsonConvert.DeserializeObject<List<Root>>(json);
+                if (root.Count == 1)
+                {
+                    citycodes.Add(root[0].woeid, root[0].title);
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("\nFound only 1 city: " + root[0].title + "\n");
+                    Console.ResetColor();
+                }
+                else if (root.Count > 1)
+                {
+                Thread thread = new Thread(Dots);
+                thread.Start();
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("Retrieving cities...Wait until its done.");
+                Console.ResetColor();
 
+                foreach (var item in root)
+                    {
+                        citycodes.Add(item.woeid, item.title);
+                        if (root.Count > 1)
+                        {
+                            var json1 = new WebClient().DownloadString($"https://www.metaweather.com/api/location/{item.woeid}/");
+                            var root1 = JsonConvert.DeserializeObject<Root>(json1);
+                            //Console.WriteLine(i.ToString() + ": " + item.title + " " + root1.parent.title);
+                            //i++;
+                        }
+                    }
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine("\nDone!");
+                    thread.Abort();
+                    Console.ForegroundColor = ConsoleColor.Blue;
+                    Console.WriteLine($"Found {citycodes.Count} matchings.\n");
+                    Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                foreach (var item in citycodes)
+                    {
+                    
+                    Console.WriteLine(i.ToString() + ": " + item.Value);
+                        i++;
+                    }
+                Console.WriteLine();
+                Console.ResetColor();
+            }
+           
             return citycodes;
         }
 
         public static int ValidCode(Dictionary<int, string> list)
         {
             int selection;
-            int mycode;
             if (list.Count > 1)
             {
                 Console.Write("Choose a city\n");
@@ -225,7 +253,26 @@ namespace WeatherApiTest
                 }
                 return list.Keys.ElementAt(selection - 1);
             }
-            return list.Keys.ElementAt(0); 
+            return list.Keys.ElementAt(0);
+        }
+        public static void Dots()
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            while (true)
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    Console.Write('.');
+                    System.Threading.Thread.Sleep(1000);
+                    if (i == 2)
+                    {
+                        Console.Write("\r   \r");
+                        i = -1;
+                        System.Threading.Thread.Sleep(1000);
+                    }
+                }
+            }
+           
         }
     }
 }
